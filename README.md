@@ -22,7 +22,7 @@ html.h-100 {
 
     body {
         div#header.w-100(style: "height: 48px; margin-top: 8px") {
-                                                    #     ________ <- Note how the opening and clsoing parens are still getting counted
+                                                    #     ________ <- Note how the opening and closing parens are matching up
             img(src: ../ressources/icon.png, onclick: goto('home'))
 
             h2.color-green { Graphmasters }
