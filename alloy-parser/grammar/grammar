@@ -20,7 +20,7 @@ attr :=
 -- basically everything but , and )
 -- this gets trimmed.
 inline-str-value :=
-    | (" " | ":" | ";") ++ <inline-str-value>
+    | (" " | ":" | ";" | ".") ++ <inline-str-value>
     | <string> ++ <inline-str-value>
     -- this way we can take opening parens, but stop on closing ones.
     | AnyParen(<inline-str-value>) ++ <inline-str-value>

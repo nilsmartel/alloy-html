@@ -118,6 +118,12 @@ mod tests {
         };
     }
 
+    bodytest!(nochildren, "head {}");
+    bodytest!(attributes_on_node, "meta(charset: UTF-8)");
+    bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8')");
+
+    bodytest!(embedded, "head { link(rel: stylesheet, href: xyz) }");
+
     bodytest!(
         body0,
         "// hello
@@ -135,6 +141,8 @@ mod tests {
                             body {}
                         }"
     );
+
+    bodytest!(idsnclasses, "div#important.highlight.w-100");
 
     bodytest!(
         bodywithcomment,
@@ -182,6 +190,7 @@ mod tests {
 
 pub fn parse(input: &str) -> nom::IResult<&str, Node> {
     let (input, node) = Node::parse_trim(input)?;
+
     let (input, _eolmarker) = KeywordEof::parse_trim(input)?;
 
     nom::combinator::not(take(1usize))(input)?;
@@ -221,17 +230,13 @@ impl Parser for Node {
 pub struct Body(pub Vec<NodeOrText>);
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
-        map(
-            delimited(
-                KeywordCurlyOpen::parse,
-                many0(terminated(
-                    NodeOrText::parse_trim,
-                    opt(KeywordComma::parse_trim),
-                )),
-                KeywordCurlyClose::parse_trim,
-            ),
-            Body,
-        )(input)
+        let (input, _) = KeywordCurlyOpen::parse(input)?;
+
+        let (input, nodes) =
+            many0((terminated(NodeOrText::parse_trim, opt(KeywordComma::parse_trim))))(input)?;
+        let (input, _) = KeywordCurlyClose::parse_trim(input)?;
+
+        Ok((input, Body(nodes)))
     }
 }
 
@@ -257,7 +262,10 @@ impl Parser for Attributes {
         map(
             delimited(
                 KeywordParenOpen::parse,
-                many0(terminated(Attribute::parse_trim, opt(char(',')))),
+                many0(terminated(
+                    Attribute::parse_trim,
+                    opt(KeywordComma::parse_trim),
+                )),
                 KeywordParenClose::parse_trim,
             ),
             Attributes,
@@ -346,7 +354,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 
     let (input, tagged) = alt((
         take_while1(
-            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' ),
+            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' ),
         ),
         recognize(StringLiteral::parse),
         anyparen,
@@ -379,7 +387,7 @@ pub struct Ident(pub String);
 impl Parser for Ident {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (rest, ident) = take_while1(
-            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' ),
+            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$'),
         )(input)?;
 
         Ok((rest, Ident(ident.to_string())))

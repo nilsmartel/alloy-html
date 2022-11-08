@@ -1,0 +1,9 @@
+// vim: set syntax=c :
+// DOCTYPE html
+html {
+    head {
+    }
+
+    body {
+    }
+}
