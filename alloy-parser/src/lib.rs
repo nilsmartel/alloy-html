@@ -89,7 +89,7 @@ mod tests {
         let i = "/* hello */ input(type: text) /* yeah */";
 
         let result = parse(i);
-        assert!(result.is_ok(), "expected to parse {i}");
+        assert!(result.is_ok(), "expected to parse {i}. Error: {:#?}", result.err());
         let (rest, _) = result.unwrap();
 
         assert_eq!(rest, "", "not rest on {i}");
@@ -311,6 +311,7 @@ where
         // cut out commments
         if input.starts_with("//") {
             if let Some(index) = input.find('\n') {
+                let index = index + 1;
                 return Self::parse_trim(&input[index..]);
             }
             return Self::parse_trim("");
@@ -318,6 +319,7 @@ where
         /* cut out comments */
         if input.starts_with("/*") {
             if let Some(index) = input.find("*/") {
+                let index = index + 2;
                 return Self::parse_trim(&input[index..]);
             }
             // It's allowed to simply cut off all remaining content without closing */
