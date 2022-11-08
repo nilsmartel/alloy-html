@@ -11,6 +11,66 @@ use nom::sequence::delimited;
 use nom::sequence::preceded;
 use nom::sequence::terminated;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn identifiers() {
+        let valid = [
+            "max",
+            "min-",
+            "background-color",
+            "backgroundColor",
+            "background_color",
+            "Ad0909-4324",
+        ];
+        for v in valid {
+            assert!(Ident::parse(v).is_ok());
+            assert_eq!(Ident::parse(v).unwrap().0, "", "nothing remains");
+        }
+    }
+
+    #[test]
+    fn inline_str() {
+        let valid = [
+            "max",
+            "min-",
+            "background-color",
+            "backgroundColor",
+            "background_color",
+            "Ad0909-4324",
+            "  ()()()  ",
+            "  ({ })",
+            "  ({})[]{}  ",
+            "  ({'hello man'}) ",
+            "open(7)",
+        ];
+        for v in valid {
+            assert!(recognize_input_str(v).is_ok(), "parsing inline str {v}");
+            assert_eq!(recognize_input_str(v).unwrap().0, "", "nothing remains");
+        }
+    }
+
+    #[test]
+    fn nodes() {
+        let input = [
+            "canvas#drawboard",
+            "input(type: text)",
+            "input(type: 'text')",
+            "h1() {hello world}",
+        ];
+
+        for i in input {
+            let result = Node::parse(i);
+            assert!(result.is_ok());
+            let (rest, _) = result.unwrap();
+
+            assert_eq!(rest, "", "not rest on {i}");
+        }
+    }
+}
+
 pub fn parse(input: &str) -> nom::IResult<&str, Node> {
     let (input, node) = Node::parse_trim(input)?;
     let (input, _eolmarker) = KeywordEof::parse_trim(input)?;
@@ -49,18 +109,41 @@ impl Parser for Node {
 }
 
 #[derive(Debug, Clone)]
-pub struct Body(Vec<Node>);
+pub struct Body(pub Vec<NodeOrText>);
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         map(
             delimited(
                 char('{'),
-                many0(terminated(Node::parse_trim, opt(char(',')))),
+                many0(terminated(NodeOrText::parse_trim, opt(char(',')))),
                 char('}'),
             ),
             Body,
         )(input)
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum NodeOrText {
+    Node(Node),
+    Text(String),
+}
+
+impl Parser for NodeOrText {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        alt((
+            map(Node::parse, NodeOrText::Node),
+            map(parse_text, NodeOrText::Text),
+        ))(input)
+    }
+}
+
+fn parse_text(input: &str) -> nom::IResult<&str, String> {
+    // TODO this needs to be done better. Recognizing intermediate comments
+    let (input, str) = recognize(recognize_input_str)(input)?;
+    let str = str.trim_start();
+
+    Ok((input, str.to_string()))
 }
 
 #[derive(Debug, Clone)]
@@ -127,7 +210,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 
     let (input, tagged) = alt((
         take_while1(
-            |c| matches!(c, ' ' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' ),
+            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' ),
         ),
         recognize(StringLiteral::parse),
         anyparen,
@@ -164,26 +247,6 @@ impl Parser for Ident {
         )(input)?;
 
         Ok((rest, Ident(ident.to_string())))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn identifiers() {
-        let valid = [
-            "max",
-            "min-",
-            "background-color",
-            "backgroundColor",
-            "background_color",
-            "Ad0909-4324",
-        ];
-        for v in valid {
-            assert!(Ident::parse(v).is_ok());
-        }
     }
 }
 
