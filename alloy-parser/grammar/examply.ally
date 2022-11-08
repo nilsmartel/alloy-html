@@ -1,9 +1,10 @@
+// vim: set syntax=c :
 # DOCTYPE html
 html.h-100 {
     head {
         meta(charset: UTF-8)
         link(
-            rel: stylesheet # new line as a valid separator
+            rel: stylesheet // new line as a valid separator
             href: https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css
         )
 
@@ -16,7 +17,7 @@ html.h-100 {
 
     body {
         div#header.w-100(style: "height: 48px; margin-top: 8px") {
-                                                    #     ________ <- Note how the opening and closing parens are still getting counted
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
             img(src: ../ressources/icon.png, onclick: goto('home'))
 
             h2.color-green { Graphmasters }

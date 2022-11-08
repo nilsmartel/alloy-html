@@ -21,6 +21,7 @@ attr :=
 -- this gets trimmed.
 inline-str-value :=
     | " "
+    | ":" | ";"
     | <string>
     -- this way we can take opening parens, but stop on closing ones.
     | AnyParen(<inline-str-value>)
