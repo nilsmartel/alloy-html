@@ -89,7 +89,11 @@ mod tests {
         let i = "/* hello */ input(type: text) /* yeah */";
 
         let result = parse(i);
-        assert!(result.is_ok(), "expected to parse {i}. Error: {:#?}", result.err());
+        assert!(
+            result.is_ok(),
+            "expected to parse {i}. Error: {:#?}",
+            result.err()
+        );
         let (rest, _) = result.unwrap();
 
         assert_eq!(rest, "", "not rest on {i}");
