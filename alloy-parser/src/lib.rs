@@ -18,8 +18,25 @@ mod tests {
 
     #[test]
     fn all_sample_files() {
-        for entry in read_dir("./samples") {
-            let entry = entry.metadata();
+        for entry in read_dir("./samples").expect("read samples directory") {
+            let entry = entry.expect("read entry");
+            let name = entry.file_name();
+            let name = name.to_str().unwrap();
+            if !name.ends_with(".alloy") {
+                continue;
+            }
+
+            let content = std::fs::read_to_string(format!("./samples/{name}"))
+                .expect("read alloy samplefile");
+
+            let res = parse(&content);
+            assert!(res.is_ok(), "Parsing {name}. Result is: {res:#?}");
+            let (rest, _nodetree) = res.unwrap();
+
+            assert_eq!(
+                rest, "",
+                "nothing remains on file {name}. Remaining: {rest}"
+            );
         }
     }
 
