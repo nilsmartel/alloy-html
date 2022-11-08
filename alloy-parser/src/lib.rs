@@ -1,14 +1,16 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub struct Node {
+    kind: String,
+    idsAndClasses: Vec<IdOrClass>,
+    attributes: Vec<Attribute>,
+    body: Vec<Node>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub enum IdOrClass {
+    Id(String),
+    Class(String),
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub struct Attribute {
+    key: String,
+    value: String,
 }
