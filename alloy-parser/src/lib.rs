@@ -12,7 +12,16 @@ use nom::sequence::terminated;
 
 #[cfg(test)]
 mod tests {
+    use std::fs::read_dir;
+
     use super::*;
+
+    #[test]
+    fn all_sample_files() {
+        for entry in read_dir("./samples") {
+            let entry = entry.metadata();
+        }
+    }
 
     #[test]
     fn identifiers() {
