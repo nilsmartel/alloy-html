@@ -233,7 +233,7 @@ impl Parser for Body {
         let (input, _) = KeywordCurlyOpen::parse(input)?;
 
         let (input, nodes) =
-            many0((terminated(NodeOrText::parse_trim, opt(KeywordComma::parse_trim))))(input)?;
+            many0(terminated(NodeOrText::parse_trim, opt(KeywordComma::parse_trim)))(input)?;
         let (input, _) = KeywordCurlyClose::parse_trim(input)?;
 
         Ok((input, Body(nodes)))
