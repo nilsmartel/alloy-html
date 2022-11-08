@@ -123,6 +123,82 @@ mod tests {
     bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8')");
 
     bodytest!(embedded, "head { link(rel: stylesheet, href: xyz) }");
+    bodytest!(
+        embedded1,
+        "head { link(rel: stylesheet, href: xyz) style {{}} }"
+    );
+
+    bodytest!(stylesheet1, "style {{}}");
+
+    bodytest!(
+        head1,
+        "
+    head {
+        /*
+        meta(charset: UTF-8)
+        link(
+            rel: stylesheet,
+            href: \"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"
+        )
+
+        style {{
+            .h-100 {
+                height: 100%
+            }
+        }}
+        */
+    }
+    "
+    );
+
+    bodytest!(
+        head2,
+        "
+    head {
+        meta(charset: UTF-8)
+        link(
+            rel: stylesheet,
+            href: \"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"
+        )
+
+        style {{
+            .h-100 {
+                height: 100%
+            }
+        }}
+    }"
+    );
+
+    bodytest!(body_filled, "
+    body {
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
+            img(src: ../ressources/icon.png, onclick: goto('home'))
+
+            h2.color-green { Graphmasters }
+            input(type: 'text')
+        }
+    }
+    ");
+
+    bodytest!(div_filled, "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
+            img(src: ../ressources/icon.png, onclick: goto('home'))
+
+            h2.color-green { 'Graphmasters' }
+            input(type: 'text')
+        }
+    ");
+
+    bodytest!(div_empty, "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {}
+    ");
+
+    bodytest!(image, "
+            img(src: ../ressources/icon.png, onclick: goto('home'))
+    ");
+
 
     bodytest!(
         body0,
@@ -232,8 +308,11 @@ impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, _) = KeywordCurlyOpen::parse(input)?;
 
-        let (input, nodes) =
-            many0(terminated(NodeOrText::parse_trim, opt(KeywordComma::parse_trim)))(input)?;
+        let (input, nodes) = many0(terminated(
+            NodeOrText::parse_trim,
+            opt(KeywordComma::parse_trim),
+        ))(input)?;
+
         let (input, _) = KeywordCurlyClose::parse_trim(input)?;
 
         Ok((input, Body(nodes)))
@@ -251,6 +330,7 @@ impl Parser for NodeOrText {
         alt((
             map(Node::parse, NodeOrText::Node),
             map(StringLiteral::parse, |f| NodeOrText::Text(f.0)),
+            map(StringInline::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
 }
@@ -354,7 +434,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 
     let (input, tagged) = alt((
         take_while1(
-            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' ),
+            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' |'%' |'°' | '/' | '\\'),
         ),
         recognize(StringLiteral::parse),
         anyparen,
@@ -387,7 +467,7 @@ pub struct Ident(pub String);
 impl Parser for Ident {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (rest, ident) = take_while1(
-            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$'),
+            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '%' | '°'),
         )(input)?;
 
         Ok((rest, Ident(ident.to_string())))

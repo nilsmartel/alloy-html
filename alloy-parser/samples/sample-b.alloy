@@ -22,7 +22,7 @@ html.h-100 {
                                                     //   ________ <- Note how the opening and closing parens are still getting counted
             img(src: ../ressources/icon.png, onclick: goto('home'))
 
-            h2.color-green { Graphmasters }
+            h2.color-green { "Graphmasters" }
             input(type: "text")
         }
     }

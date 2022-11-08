@@ -27,7 +27,7 @@ inline-str-value :=
     | <ident> ++ <inline-str-value>
     | <null>
 
-<ident> := a-z|A-Z|0-9|-|_
+<ident> := a-z|A-Z|0-9|-|_|$|%|°
 
 <id> := '#' <ident>
 
