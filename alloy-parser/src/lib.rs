@@ -61,7 +61,7 @@ mod tests {
             "canvas#drawboard",
             "input(type: text)",
             "input(type: 'text')",
-            "h1() {hello world}",
+            "h1() {'hello world'}",
         ];
 
         for i in input {
@@ -72,6 +72,48 @@ mod tests {
             assert_eq!(rest, "", "not rest on {i}");
         }
     }
+
+    macro_rules! bodytest {
+        ($name: ident, $input: expr) => {
+            #[test]
+            fn $name() {
+                let input = $input;
+
+                let result = parse(input);
+                assert!(
+                    result.is_ok(),
+                    "expected to parse {input}. Error: {:#?}",
+                    result
+                );
+                let (rest, _) = result.unwrap();
+
+                assert_eq!(rest, "", "not rest on {input}");
+            }
+        };
+    }
+
+    bodytest!(
+        body1,
+        "// hello
+                        html {
+                            head
+                            body {}
+                        }"
+    );
+
+    bodytest!(
+        bodywithcomment,
+        "html {
+    head
+ } /* oi ya wee wanker */ "
+    );
+
+    bodytest!(
+        body2,
+        "html {
+    head
+ }"
+    );
 
     #[test]
     fn comments1() {
@@ -143,9 +185,12 @@ impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         map(
             delimited(
-                char('{'),
-                many0(terminated(NodeOrText::parse_trim, opt(char(',')))),
-                char('}'),
+                KeywordCurlyOpen::parse,
+                many0(terminated(
+                    NodeOrText::parse_trim,
+                    opt(KeywordComma::parse_trim),
+                )),
+                KeywordCurlyClose::parse_trim,
             ),
             Body,
         )(input)
@@ -162,7 +207,7 @@ impl Parser for NodeOrText {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(Node::parse, NodeOrText::Node),
-            map(StringInline::parse, |f| NodeOrText::Text(f.0)),
+            map(StringLiteral::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
 }
@@ -173,9 +218,9 @@ impl Parser for Attributes {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         map(
             delimited(
-                char('('),
+                KeywordCurlyOpen::parse,
                 many0(terminated(Attribute::parse_trim, opt(char(',')))),
-                char(')'),
+                KeywordCurlyClose::parse_trim,
             ),
             Attributes,
         )(input)
@@ -334,13 +379,26 @@ where
     }
 }
 
-struct KeywordColon;
-impl Parser for KeywordColon {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (rest, _) = char(':')(input)?;
-        Ok((rest, KeywordColon))
-    }
+macro_rules! keyword {
+    ($name: ident, $ch: expr) => {
+        struct $name;
+        impl Parser for $name {
+            fn parse(input: &str) -> nom::IResult<&str, Self> {
+                let (rest, _) = char($ch)(input)?;
+                Ok((rest, $name))
+            }
+        }
+    };
 }
+
+keyword!(KeywordColon, ':');
+keyword!(KeywordComma, ',');
+keyword!(KeywordParenOpen, '(');
+keyword!(KeywordParenClose, ')');
+keyword!(KeywordBracketOpen, '[');
+keyword!(KeywordBracketClose, ']');
+keyword!(KeywordCurlyOpen, '{');
+keyword!(KeywordCurlyClose, '}');
 
 struct KeywordEof;
 impl Parser for KeywordEof {
