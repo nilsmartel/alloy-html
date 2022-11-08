@@ -93,6 +93,15 @@ mod tests {
     }
 
     bodytest!(
+        body0,
+        "// hello
+                        html {
+                            head,
+                            body {}
+                        }"
+    );
+
+    bodytest!(
         body1,
         "// hello
                         html {
