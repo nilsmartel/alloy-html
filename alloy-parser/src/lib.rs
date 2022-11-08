@@ -5,7 +5,6 @@ use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
 use nom::combinator::map;
 use nom::combinator::opt;
-use nom::combinator::recognize;
 use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::sequence::preceded;
@@ -34,21 +33,23 @@ mod tests {
     #[test]
     fn inline_str() {
         let valid = [
+            "  ()()()",
             "max",
             "min-",
             "background-color",
             "backgroundColor",
             "background_color",
             "Ad0909-4324",
-            "  ()()()  ",
             "  ({ })",
-            "  ({})[]{}  ",
-            "  ({'hello man'}) ",
+            "  ({})[]{}",
+            "  ({'hello man'})",
             "open(7)",
         ];
         for v in valid {
-            assert!(recognize_input_str(v).is_ok(), "parsing inline str {v}");
-            assert_eq!(recognize_input_str(v).unwrap().0, "", "nothing remains");
+            let result = StringInline::parse_trim(v);
+            assert!(result.is_ok(), "parsing inline str {v}");
+            let (rest, _) = result.unwrap();
+            assert_eq!(rest, "", "nothing remains");
         }
     }
 
@@ -149,17 +150,9 @@ impl Parser for NodeOrText {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(Node::parse, NodeOrText::Node),
-            map(parse_text, NodeOrText::Text),
+            map(StringInline::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
-}
-
-fn parse_text(input: &str) -> nom::IResult<&str, String> {
-    // TODO this needs to be done better. Recognizing intermediate comments
-    let (input, str) = recognize(recognize_input_str)(input)?;
-    let str = str.trim_start();
-
-    Ok((input, str.to_string()))
 }
 
 #[derive(Debug, Clone)]
@@ -206,16 +199,30 @@ impl Parser for Attribute {
             return Ok((input, Attribute { key, value: None }))
         };
 
-        let (input, value) = recognize(recognize_input_str)(input)?;
+        let (input, StringInline(value)) = StringInline::parse_trim(input)?;
 
-        let value = value.trim();
-        let value = Some(value.to_string());
+        Ok((input, Attribute { key, value: Some(value) }))
+    }
+}
 
-        Ok((input, Attribute { key, value }))
+pub struct StringInline(String);
+impl Parser for StringInline {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        use nom::combinator::recognize;
+
+        // parsing "" should ommit them
+        if let Ok((rest, StringLiteral(s))) = StringLiteral::parse(input) {
+            return Ok((rest, StringInline(s)));
+        }
+        
+        let (rest, s) = recognize(recognize_input_str)(input)?;
+        Ok((rest, StringInline(s.to_string())))
     }
 }
 
 fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
+    use nom::combinator::recognize;
+
     fn anyparen(input: &str) -> nom::IResult<&str, &str> {
         alt((
             delimited(char('('), recognize_input_str, char(')')),
