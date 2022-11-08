@@ -1,21 +1,84 @@
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::take;
 use nom::bytes::complete::take_while;
 use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
 use nom::combinator::map;
+use nom::combinator::opt;
 use nom::combinator::recognize;
+use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::sequence::preceded;
+use nom::sequence::terminated;
 
+pub fn parse(input: &str) -> nom::IResult<&str, Node> {
+    let (input, node) = Node::parse_trim(input)?;
+    let (input, _eolmarker) = KeywordEof::parse_trim(input)?;
+
+    nom::combinator::not(take(1usize))(input)?;
+
+    Ok((input, node))
+}
+
+#[derive(Debug, Clone)]
 pub struct Node {
     pub kind: Ident,
     pub ids_and_classes: Vec<IdOrClass>,
-    pub attributes: Vec<Attribute>,
-    pub body: Vec<Node>,
+    pub attributes: Option<Attributes>,
+    pub body: Option<Body>,
 }
-impl Parser for Node {}
+impl Parser for Node {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        let (input, kind) = Ident::parse(input)?;
+        let (input, ids_and_classes) = many0(IdOrClass::parse_trim)(input)?;
 
+        let (input, attributes) = opt(Attributes::parse_trim)(input)?;
+
+        let (input, body) = opt(Body::parse_trim)(input)?;
+
+        Ok((
+            input,
+            Node {
+                kind,
+                ids_and_classes,
+                attributes,
+                body,
+            },
+        ))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Body(Vec<Node>);
+impl Parser for Body {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        map(
+            delimited(
+                char('{'),
+                many0(terminated(Node::parse_trim, opt(char(',')))),
+                char('}'),
+            ),
+            Body,
+        )(input)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Attributes(Vec<Attribute>);
+impl Parser for Attributes {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        map(
+            delimited(
+                char('('),
+                many0(terminated(Attribute::parse_trim, opt(char(',')))),
+                char(')'),
+            ),
+            Attributes,
+        )(input)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum IdOrClass {
     Id(Ident),
     Class(Ident),
@@ -30,6 +93,7 @@ impl Parser for IdOrClass {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Attribute {
     pub key: Ident,
     pub value: Option<String>,
@@ -76,6 +140,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
     Ok((input, tagged))
 }
 
+#[derive(Debug, Clone)]
 struct StringLiteral(String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -90,6 +155,7 @@ impl Parser for StringLiteral {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Ident(pub String);
 impl Parser for Ident {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -155,5 +221,13 @@ impl Parser for KeywordColon {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (rest, _) = char(':')(input)?;
         Ok((rest, KeywordColon))
+    }
+}
+
+struct KeywordEof;
+impl Parser for KeywordEof {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        let (rest, _) = take(0usize)(input)?;
+        Ok((rest, KeywordEof))
     }
 }
