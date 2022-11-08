@@ -203,7 +203,13 @@ impl Parser for Attribute {
 
         let (input, StringInline(value)) = StringInline::parse_trim(input)?;
 
-        Ok((input, Attribute { key, value: Some(value) }))
+        Ok((
+            input,
+            Attribute {
+                key,
+                value: Some(value),
+            },
+        ))
     }
 }
 
@@ -216,7 +222,7 @@ impl Parser for StringInline {
         if let Ok((rest, StringLiteral(s))) = StringLiteral::parse(input) {
             return Ok((rest, StringInline(s)));
         }
-        
+
         let (rest, s) = recognize(recognize_input_str)(input)?;
         Ok((rest, StringInline(s.to_string())))
     }
@@ -227,9 +233,21 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 
     fn anyparen(input: &str) -> nom::IResult<&str, &str> {
         alt((
-            delimited(char('('), alt((recognize_input_str, take(0usize))), char(')')),
-            delimited(char('{'), alt((recognize_input_str, take(0usize))), char('}')),
-            delimited(char('['), alt((recognize_input_str, take(0usize))), char(']')),
+            delimited(
+                char('('),
+                alt((recognize_input_str, take(0usize))),
+                char(')'),
+            ),
+            delimited(
+                char('{'),
+                alt((recognize_input_str, take(0usize))),
+                char('}'),
+            ),
+            delimited(
+                char('['),
+                alt((recognize_input_str, take(0usize))),
+                char(']'),
+            ),
         ))(input)
     }
 
