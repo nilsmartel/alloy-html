@@ -15,16 +15,15 @@ attributes :=
 
 attr :=
     key: <ident>
-    value: <string | inline-str-value>?
+    value: ":" <inline-str-value>?
 
 -- basically everything but , and )
 -- this gets trimmed.
 inline-str-value :=
-    | " "
-    | ":" | ";"
-    | <string>
+    | (" " | ":" | ";") ++ <inline-str-value>
+    | <string> ++ <inline-str-value>
     -- this way we can take opening parens, but stop on closing ones.
-    | AnyParen(<inline-str-value>)
+    | AnyParen(<inline-str-value>) ++ <inline-str-value>
     | <ident> ++ <inline-str-value>
     | <null>
 
