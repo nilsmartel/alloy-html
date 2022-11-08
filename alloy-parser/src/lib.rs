@@ -74,19 +74,25 @@ mod tests {
     }
 
     #[test]
-    fn comments() {
-        let input = [
-            "// hello world\n canvas#drawboard",
-            "/* hello */ input(type: text) /* yeah */",
-        ];
+    fn comments1() {
+        let i = "// hello world\n canvas#drawboard";
 
-        for i in input {
-            let result = Node::parse(i);
-            assert!(result.is_ok());
-            let (rest, _) = result.unwrap();
+        let result = parse(i);
+        assert!(result.is_ok(), "expected to parse {i}");
+        let (rest, _) = result.unwrap();
 
-            assert_eq!(rest, "", "not rest on {i}");
-        }
+        assert_eq!(rest, "", "not rest on {i}");
+    }
+
+    #[test]
+    fn comments2() {
+        let i = "/* hello */ input(type: text) /* yeah */";
+
+        let result = parse(i);
+        assert!(result.is_ok(), "expected to parse {i}");
+        let (rest, _) = result.unwrap();
+
+        assert_eq!(rest, "", "not rest on {i}");
     }
 }
 
