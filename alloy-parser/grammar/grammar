@@ -6,9 +6,11 @@ Element :=
     attr: <attributes>?
     body: <body>?
 
+<body> := "{" Element* "}"
+
 attributes :=
     "("
-    <attr>*
+    <attr> ** ","
     ")"
 
 attr :=
