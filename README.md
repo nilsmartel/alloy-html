@@ -4,6 +4,8 @@ Programmer friendly syntax for html files.
 
 ---
 
+## Example
+
 ```css
 html.h-100 {
     head {
@@ -30,3 +32,8 @@ html.h-100 {
     }
 }
 ```
+
+## Why not react?
+
+Because I think writing raw html is an underrated and legitimate way of coding highly performant website.
+React has many downsides and I'd avoid using webpack any day of the week for small projects.
