@@ -115,6 +115,8 @@ mod tests {
  }"
     );
 
+    bodytest!(inputelem, "input(type: text)");
+
     #[test]
     fn comments1() {
         let i = "// hello world\n canvas#drawboard";
@@ -218,9 +220,9 @@ impl Parser for Attributes {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         map(
             delimited(
-                KeywordCurlyOpen::parse,
+                KeywordParenOpen::parse,
                 many0(terminated(Attribute::parse_trim, opt(char(',')))),
-                KeywordCurlyClose::parse_trim,
+                KeywordParenClose::parse_trim,
             ),
             Attributes,
         )(input)
