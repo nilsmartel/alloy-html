@@ -69,6 +69,22 @@ mod tests {
             assert_eq!(rest, "", "not rest on {i}");
         }
     }
+
+    #[test]
+    fn comments() {
+        let input = [
+            "// hello world\n canvas#drawboard",
+            "/* hello */ input(type: text) /* yeah */",
+        ];
+
+        for i in input {
+            let result = Node::parse(i);
+            assert!(result.is_ok());
+            let (rest, _) = result.unwrap();
+
+            assert_eq!(rest, "", "not rest on {i}");
+        }
+    }
 }
 
 pub fn parse(input: &str) -> nom::IResult<&str, Node> {
