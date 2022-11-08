@@ -33,7 +33,9 @@ mod tests {
     #[test]
     fn inline_str() {
         let valid = [
+            "'hello world'",
             "  ()()()",
+            "( )",
             "max",
             "min-",
             "background-color",
@@ -225,9 +227,9 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 
     fn anyparen(input: &str) -> nom::IResult<&str, &str> {
         alt((
-            delimited(char('('), recognize_input_str, char(')')),
-            delimited(char('{'), recognize_input_str, char('}')),
-            delimited(char('['), recognize_input_str, char(']')),
+            delimited(char('('), alt((recognize_input_str, take(0usize))), char(')')),
+            delimited(char('{'), alt((recognize_input_str, take(0usize))), char('}')),
+            delimited(char('['), alt((recognize_input_str, take(0usize))), char(']')),
         ))(input)
     }
 
@@ -251,8 +253,8 @@ struct StringLiteral(String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, s) = alt((
-            delimited(char('\''), take_while(|c| c == '\''), char('\'')),
-            delimited(char('"'), take_while(|c| c == '"'), char('"')),
+            delimited(char('\''), take_while(|c| c != '\''), char('\'')),
+            delimited(char('"'), take_while(|c| c != '"'), char('"')),
         ))(input)?;
 
         let s = s.to_string();
