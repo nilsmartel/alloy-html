@@ -227,12 +227,12 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 struct StringLiteral(String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, _) = char('\'')(input)?;
+        let (input, s) = alt((
+            delimited(char('\''), take_while(|c| c == '\''), char('\'')),
+            delimited(char('"'), take_while(|c| c == '"'), char('"')),
+        ))(input)?;
 
-        let (input, s) = take_while(|c| c == '\'')(input)?;
         let s = s.to_string();
-
-        let (input, _) = char('\'')(input)?;
 
         Ok((input, StringLiteral(s)))
     }
