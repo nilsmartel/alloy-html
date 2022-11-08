@@ -3,17 +3,17 @@
 version = 3
 
 [[package]]
+name = "alloy-html"
+version = "0.1.0"
+dependencies = [
+ "alloy-parser",
+]
+
+[[package]]
 name = "alloy-parser"
 version = "0.1.0"
 dependencies = [
  "nom",
-]
-
-[[package]]
-name = "html"
-version = "0.1.0"
-dependencies = [
- "alloy-parser",
 ]
 
 [[package]]

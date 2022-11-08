@@ -116,6 +116,7 @@ mod tests {
     );
 
     bodytest!(inputelem, "input(type: text)");
+    bodytest!(div, "div() { h1 {} }");
 
     #[test]
     fn comments1() {
