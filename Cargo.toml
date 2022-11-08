@@ -1,5 +1,5 @@
 [package]
-name = "html"
+name = "alloy-html"
 version = "0.1.0"
 authors = ["Nils Martel <nils.martel@graphmasters.net>"]
 edition = "2018"
