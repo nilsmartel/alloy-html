@@ -125,10 +125,14 @@ mod tests {
     bodytest!(embedded, "head { link(rel: stylesheet, href: xyz) }");
     bodytest!(
         embedded1,
-        "head { link(rel: stylesheet, href: xyz); style '' "
+        "head { link(rel: stylesheet, href: xyz); style \"\" }"
     );
 
     bodytest!(stylesheet1, "style {{}}");
+
+    bodytest!(textnode1, "h1 'hello world'");
+    bodytest!(textnode2, "h1(bold: true) 'hello world'");
+    bodytest!(textnode3, "h1.bold 'hello world'");
 
     bodytest!(
         head1,
