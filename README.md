@@ -36,10 +36,6 @@ html.h-100 {
         // if a node has not content, one can indicate that simply by writing ; instead of {}
         br;
 
-        // multiline strings will result in multiline output!
-        p "hope you will have a lot of fun on here!
-        best regards from me"
-
         // often nodes only have a single child. You can then write it directly as argument to the node
         div.center div.fill p "alloy is super nice to write"
 

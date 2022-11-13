@@ -123,9 +123,9 @@ fn escape(i: &str) -> String {
             '\'' => {
                 s.push_str("\\'");
             }
-            '\n' => {
-                s.push_str("<br />");
-            }
+            // '\n' => {
+            //     s.push_str("<br />");
+            // }
             x => {
                 s.push(x);
             }
