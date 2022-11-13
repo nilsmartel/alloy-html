@@ -122,7 +122,7 @@ mod tests {
     bodytest!(attributes_on_node, "meta(charset: UTF-8);");
     bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8');");
 
-    bodytest!(embedded, "head { link(rel: stylesheet, href: xyz) }");
+    bodytest!(embedded, "head { link(rel: stylesheet, href: xyz); }");
     bodytest!(
         embedded1,
         "head { link(rel: stylesheet, href: xyz); style \"\" }"
@@ -159,7 +159,7 @@ mod tests {
         head2,
         "
     head {
-        meta(charset: UTF-8)
+        meta(charset: UTF-8);
         link(
             rel: stylesheet,
             href: \"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn comments1() {
-        let i = "// hello world\n canvas#drawboard";
+        let i = "// hello world\n canvas#drawboard;";
 
         let result = parse(i);
         assert!(result.is_ok(), "expected to parse {i}");
