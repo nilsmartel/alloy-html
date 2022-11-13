@@ -62,18 +62,20 @@ fn to_html(
         }
     }
 
-    let classes = classes.join(" ");
+    if !classes.is_empty() {
+        let classes = classes.join(" ");
 
-    write!(w, "class='{classes}'")?;
+        write!(w, "class='{classes}'")?;
 
-    if let Some(a) = &node.attributes {
-        for att in &a.0 {
-            write!(w, " {}", att.key.0)?;
-            let Some(value) = &att.value else {
+        if let Some(a) = &node.attributes {
+            for att in &a.0 {
+                write!(w, " {}", att.key.0)?;
+                let Some(value) = &att.value else {
                 continue;
             };
 
-            write!(w, "='{}'", escape(&value))?;
+                write!(w, "='{}'", escape(&value))?;
+            }
         }
     }
 
