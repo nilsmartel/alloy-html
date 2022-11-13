@@ -84,9 +84,9 @@ mod tests {
     #[test]
     fn nodes() {
         let input = [
-            "canvas#drawboard",
-            "input(type: text)",
-            "input(type: 'text')",
+            "canvas#drawboard;",
+            "input(type: text);",
+            "input(type: 'text');",
             "h1() {'hello world'}",
         ];
 
@@ -119,13 +119,13 @@ mod tests {
     }
 
     bodytest!(nochildren, "head {}");
-    bodytest!(attributes_on_node, "meta(charset: UTF-8)");
-    bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8')");
+    bodytest!(attributes_on_node, "meta(charset: UTF-8);");
+    bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8');");
 
     bodytest!(embedded, "head { link(rel: stylesheet, href: xyz) }");
     bodytest!(
         embedded1,
-        "head { link(rel: stylesheet, href: xyz) style {{}} }"
+        "head { link(rel: stylesheet, href: xyz); style '' "
     );
 
     bodytest!(stylesheet1, "style {{}}");
@@ -135,11 +135,11 @@ mod tests {
         "
     head {
         /*
-        meta(charset: UTF-8)
+        meta(charset: UTF-8);
         link(
             rel: stylesheet,
             href: \"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"
-        )
+        );
 
         style {{
             .h-100 {
@@ -159,13 +159,13 @@ mod tests {
         link(
             rel: stylesheet,
             href: \"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"
-        )
+        );
 
-        style {{
+        style '
             .h-100 {
                 height: 100%
             }
-        }}
+        '
     }"
     );
 
@@ -173,10 +173,10 @@ mod tests {
     body {
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
                                                     //   ________ <- Note how the opening and closing parens are still getting counted
-            img(src: ../ressources/icon.png, onclick: goto('home'))
+            img(src: ../ressources/icon.png, onclick: goto('home'));
 
             h2.color-green { Graphmasters }
-            input(type: 'text')
+            input(type: 'text');
         }
     }
     ");
@@ -184,27 +184,39 @@ mod tests {
     bodytest!(div_filled, "
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
                                                     //   ________ <- Note how the opening and closing parens are still getting counted
-            img(src: ../ressources/icon.png, onclick: goto('home'))
+            img(src: ../ressources/icon.png, onclick: goto('home'));
 
             h2.color-green { 'Graphmasters' }
-            input(type: 'text')
+            input(type: 'text');
         }
     ");
 
-    bodytest!(div_empty, "
+    bodytest!(
+        div_empty,
+        "
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {}
-    ");
+    "
+    );
 
-    bodytest!(image, "
-            img(src: ../ressources/icon.png, onclick: goto('home'))
-    ");
+    bodytest!(
+        div_empty2,
+        "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px');
+    "
+    );
 
+    bodytest!(
+        image,
+        "
+            img(src: ../ressources/icon.png, onclick: goto('home'));
+    "
+    );
 
     bodytest!(
         body0,
         "// hello
                         html {
-                            head,
+                            head;,
                             body {}
                         }"
     );
@@ -213,28 +225,28 @@ mod tests {
         body1,
         "// hello
                         html {
-                            head
+                            head;
                             body {}
                         }"
     );
 
-    bodytest!(idsnclasses, "div#important.highlight.w-100");
+    bodytest!(idsnclasses, "div#important.highlight.w-100;");
 
     bodytest!(
         bodywithcomment,
         "html {
-    head
+    head;
  } /* oi ya wee wanker */ "
     );
 
     bodytest!(
         body2,
         "html {
-    head
+    head;
  }"
     );
 
-    bodytest!(inputelem, "input(type: text)");
+    bodytest!(inputelem, "input(type: text);");
     bodytest!(div, "div() { h1 {} }");
 
     #[test]
@@ -250,7 +262,7 @@ mod tests {
 
     #[test]
     fn comments2() {
-        let i = "/* hello */ input(type: text) /* yeah */";
+        let i = "/* hello */ input(type: text); /* yeah */";
 
         let result = parse(i);
         assert!(
@@ -279,7 +291,7 @@ pub struct Node {
     pub kind: Ident,
     pub ids_and_classes: Vec<IdOrClass>,
     pub attributes: Option<Attributes>,
-    pub body: Option<Body>,
+    pub body: Body,
 }
 impl Parser for Node {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -288,7 +300,7 @@ impl Parser for Node {
 
         let (input, attributes) = opt(Attributes::parse_trim)(input)?;
 
-        let (input, body) = opt(Body::parse_trim)(input)?;
+        let (input, body) = Body::parse_trim(input)?;
 
         Ok((
             input,
@@ -303,8 +315,27 @@ impl Parser for Node {
 }
 
 #[derive(Debug, Clone)]
-pub struct Body(pub Vec<NodeOrText>);
+pub enum Body {
+    Nodes(NodeList),
+    Node(Box<Node>),
+    String(StringLiteral),
+    None,
+}
+
 impl Parser for Body {
+    fn parse(input: &str) -> nom::IResult<&str, Self> {
+        alt((
+            map(NodeList::parse, Body::Nodes),
+            map(StringLiteral::parse, Body::String),
+            // map(Node::parse, |n| Body::Node(Box::new(n)),
+            map(KeywordNone::parse, |_| Body::None),
+        ))(input)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NodeList(pub Vec<NodeOrText>);
+impl Parser for NodeList {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, _) = KeywordCurlyOpen::parse(input)?;
 
@@ -315,7 +346,7 @@ impl Parser for Body {
 
         let (input, _) = KeywordCurlyClose::parse_trim(input)?;
 
-        Ok((input, Body(nodes)))
+        Ok((input, NodeList(nodes)))
     }
 }
 
@@ -448,7 +479,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 }
 
 #[derive(Debug, Clone)]
-struct StringLiteral(String);
+pub struct StringLiteral(String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, s) = alt((
@@ -525,6 +556,7 @@ keyword!(KeywordBracketOpen, '[');
 keyword!(KeywordBracketClose, ']');
 keyword!(KeywordCurlyOpen, '{');
 keyword!(KeywordCurlyClose, '}');
+keyword!(KeywordNone, ';');
 
 struct KeywordEof;
 impl Parser for KeywordEof {

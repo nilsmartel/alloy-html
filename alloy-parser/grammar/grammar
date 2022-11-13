@@ -1,12 +1,19 @@
 -- vim: set syntax=haskell :
 
-Element :=
+Node :=
     kind: <ident>
     ids_classes: (<id>|<class>)*
     attr: <attributes>?
-    body: <body>?
+    body: <body>
 
-<body> := "{" Element* "}"
+
+NodeOrText := Node | <string> | <inline-str-value>
+
+<body> :=
+    |   "{" NodeOrText* "}"
+    |   <string>
+    |   Node
+    |   ";" -- nothing
 
 attributes :=
     "("
