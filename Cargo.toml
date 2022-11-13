@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 alloy-parser = { path = "alloy-parser" }
+# Parse command line argument by defining a struct.
+structopt = "0.3.26"
+

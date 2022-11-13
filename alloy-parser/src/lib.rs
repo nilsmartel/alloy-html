@@ -371,7 +371,7 @@ impl Parser for NodeOrText {
 }
 
 #[derive(Debug, Clone)]
-pub struct Attributes(Vec<Attribute>);
+pub struct Attributes(pub Vec<Attribute>);
 impl Parser for Attributes {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         map(
@@ -483,7 +483,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
 }
 
 #[derive(Debug, Clone)]
-pub struct StringLiteral(String);
+pub struct StringLiteral(pub String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, s) = alt((
