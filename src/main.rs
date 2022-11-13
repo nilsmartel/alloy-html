@@ -4,6 +4,7 @@ use std::{
     ffi::OsString,
     fs::write,
     io::{self, stdout, BufWriter, Write},
+    ops::Add,
 };
 
 use structopt::StructOpt;
@@ -48,13 +49,13 @@ fn to_html(
     indent(w, level * config.indent)?;
 
     // write start of html tag.
-    write!(w, "<{} ", node.kind.0)?;
+    write!(w, "<{}", node.kind.0)?;
 
     let mut classes = Vec::new();
     for ioc in node.ids_and_classes.iter() {
         match ioc {
             ast::IdOrClass::Id(i) => {
-                write!(w, "id='{}'", i.0)?;
+                write!(w, " id='{}'", i.0)?;
             }
             ast::IdOrClass::Class(c) => {
                 classes.push(c.0.clone());
@@ -65,7 +66,7 @@ fn to_html(
     if !classes.is_empty() {
         let classes = classes.join(" ");
 
-        write!(w, "class='{classes}'")?;
+        write!(w, " class='{classes}'")?;
 
         if let Some(a) = &node.attributes {
             for att in &a.0 {
@@ -84,6 +85,7 @@ fn to_html(
     match &node.body {
         ast::Body::None => {}
         ast::Body::String(s) => {
+            indent(w, level.add(1) * config.indent)?;
             write!(w, "{}", escape(&s.0))?;
         }
         ast::Body::Node(node) => {
@@ -96,6 +98,7 @@ fn to_html(
                         to_html(w, node, level + 1, config)?;
                     }
                     NodeOrText::Text(text) => {
+                        indent(w, (level + 1) * config.indent)?;
                         write!(w, "{}", escape(&text))?;
                     }
                 }
@@ -103,6 +106,7 @@ fn to_html(
         }
     }
 
+    indent(w, level * config.indent)?;
     writeln!(w, "</{}>", node.kind.0)?;
 
     Ok(())
