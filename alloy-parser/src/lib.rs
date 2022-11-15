@@ -443,8 +443,10 @@ impl Parser for Body {
             map(StringLiteral::parse, |s| {
                 vec![NodeOrText::Text(s)]
             }),
+
             // div
-            map(Node::parse, |n| Body(NodeList(vec![NodeOrText::Node(n)]))),
+            // e.g. directly a node as first child.
+            map(Node::parse, |n| vec![NodeOrText::Node(n)]),
         ))(input)
     }
 }
