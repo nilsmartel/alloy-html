@@ -6,7 +6,7 @@ html.h-100 {
             href: "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         );
 
-        // we donÄt need a lot of style here
+        // we don't need a lot of style here
         style "
             .h-100 {
                 height: 100%
@@ -26,10 +26,6 @@ html.h-100 {
 
         // if a node has not content, one can indicate that simply by writing ; instead of {}
         br;
-
-        // multiline strings will result in multiline output!
-        p "hope you will have a lot of fun on here!
-        best regards from me"
 
         // often nodes only have a single child. You can then write it directly as argument to the node
         div.center div.fill p "alloy is super nice to write"

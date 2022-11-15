@@ -3,6 +3,7 @@ use nom::bytes::complete::take;
 use nom::bytes::complete::take_while;
 use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
+use nom::combinator::cut;
 use nom::combinator::map;
 use nom::combinator::opt;
 use nom::multi::many0;
@@ -38,6 +39,20 @@ mod tests {
                 "nothing remains on file {name}. Remaining: {rest}"
             );
         }
+    }
+
+    #[test]
+    fn quick_syntax() {
+        let input = "div p 'hello'";
+        let expected = Node {
+            kind: Ident(String::from("div")),
+            body: Body::from_s("p {'hello'}"),
+            ..Default::default()
+        };
+
+        let result = Node::from_s(input);
+
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -118,6 +133,42 @@ mod tests {
         };
     }
 
+    #[test]
+    fn fullelement() {
+        let input = "img(src: ../resources/icon.png, onclick: goto('home'));";
+        let expected = Node {
+            kind: Ident("img".to_string()),
+            ids_and_classes: Vec::new(),
+            attributes: Some(Attributes(vec![
+                Attribute {
+                    key: Ident("src".to_string()),
+                    value: Some("../resources/icon.png".to_string()),
+                },
+                Attribute {
+                    key: Ident("onclick".to_string()),
+                    value: Some("goto('home')".to_string()),
+                },
+            ])),
+            body: Body::default(),
+        };
+
+        let Ok((rest, mut result)) = parse(input) else {
+                panic!("expected to parse input");
+            };
+        let NodeOrText::Node(result) = result.0.0.remove(0) else {
+            panic!("expected node");
+        };
+
+        assert_eq!(rest, "");
+        assert_eq!(expected.kind, result.kind, "same kind");
+        assert_eq!(
+            expected.ids_and_classes, result.ids_and_classes,
+            "same ids and classes"
+        );
+        assert_eq!(expected.attributes, result.attributes, "same attributes");
+        assert_eq!(expected.body, result.body, "same body");
+    }
+
     bodytest!(nochildren, "head {}");
     bodytest!(attributes_on_node, "meta(charset: UTF-8);");
     bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8');");
@@ -184,6 +235,25 @@ mod tests {
         }
     }
     ");
+
+    #[test]
+    fn attributes_and_ids() {
+        let input = "div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+        }";
+        let expected = Node {
+            kind: Ident::from_s("div"),
+            ids_and_classes: vec![IdOrClass::from_s("#header"), IdOrClass::from_s(".w-100")],
+            attributes: Some(Attributes(vec![Attribute {
+                key: Ident::from_s("style"),
+                value: Some(String::from("height: 48px; margin-top: 8px")),
+            }])),
+            body: Body::default(),
+        };
+
+        let result = Node::from_s(input);
+
+        assert_eq!(result, expected);
+    }
 
     bodytest!(div_filled, "
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
@@ -265,6 +335,17 @@ mod tests {
     }
 
     #[test]
+    fn inline_str2() {
+        let i = "../../src/main.rs";
+
+        let result = StringInline::parse(i);
+        assert!(result.is_ok(), "expected to parse {i}");
+        let (rest, r) = result.unwrap();
+        assert_eq!(rest, "", "not rest on {i}");
+        assert_eq!(r.0, i);
+    }
+
+    #[test]
     fn comments2() {
         let i = "/* hello */ input(type: text); /* yeah */";
 
@@ -280,17 +361,17 @@ mod tests {
     }
 }
 
-pub fn parse(input: &str) -> nom::IResult<&str, Node> {
-    let (input, node) = Node::parse_trim(input)?;
+pub fn parse(input: &str) -> nom::IResult<&str, Body> {
+    let (input, body) = Body::parse_trim(input)?;
 
     let (input, _eolmarker) = KeywordEof::parse_trim(input)?;
 
     nom::combinator::not(take(1usize))(input)?;
 
-    Ok((input, node))
+    Ok((input, body))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     pub kind: Ident,
     pub ids_and_classes: Vec<IdOrClass>,
@@ -304,7 +385,13 @@ impl Parser for Node {
 
         let (input, attributes) = opt(Attributes::parse_trim)(input)?;
 
-        let (input, body) = Body::parse_trim(input)?;
+        // may be one of these 4
+
+        // div
+        // "abcdefg"
+        // ;
+        // {}
+        let (input, body) = cut(Body::parse_trim)(input)?;
 
         Ok((
             input,
@@ -318,59 +405,73 @@ impl Parser for Node {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Body {
-    Nodes(NodeList),
-    Node(Box<Node>),
-    String(StringLiteral),
-    None,
-}
+// #[derive(Default, Debug, Clone, PartialEq, Eq)]
+// pub struct Body(NodeList);
+
+type Body = Vec<NodeOrText>;
 
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
+
+        // { ... }
+        fn parse_block(input: &str) -> nom::IResult<&str, Body> {
+            let (input, _) = KeywordCurlyOpen::parse(input)?;
+
+            let (input, nodes) = many0(terminated(
+                NodeOrText::parse_trim,
+                opt(KeywordComma::parse_trim),
+            ))(input)?;
+
+            let (input, _) = KeywordCurlyClose::parse_trim(input)?;
+
+            Ok((input, nodes))
+        }
+        
+        // div
+        // "abcdefg"
+        // ;
+        // {}
         alt((
-            map(NodeList::parse, Body::Nodes),
-            map(StringLiteral::parse, Body::String),
-            // map(Node::parse, |n| Body::Node(Box::new(n)),
-            map(KeywordNone::parse, |_| Body::None),
+            // { ... }
+            parse_block,
+            // ;
+            map(KeywordNone::parse, |_| 
+                 // create new empty vector
+                 Body::new()),
+            // "hello"
+            // the same as { "hello" }
+            map(StringLiteral::parse, |s| {
+                vec![NodeOrText::Text(s)]
+            }),
+            // div
+            map(Node::parse, |n| Body(NodeList(vec![NodeOrText::Node(n)]))),
         ))(input)
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct NodeList(pub Vec<NodeOrText>);
-impl Parser for NodeList {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, _) = KeywordCurlyOpen::parse(input)?;
-
-        let (input, nodes) = many0(terminated(
-            NodeOrText::parse_trim,
-            opt(KeywordComma::parse_trim),
-        ))(input)?;
-
-        let (input, _) = KeywordCurlyClose::parse_trim(input)?;
-
-        Ok((input, NodeList(nodes)))
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeOrText {
     Node(Node),
-    Text(String),
+    Text(StringLiteral),
+}
+
+impl Default for NodeOrText {
+    fn default() -> Self {
+        NodeOrText::Node(Node::default())
+    }
 }
 
 impl Parser for NodeOrText {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(Node::parse, NodeOrText::Node),
-            map(StringLiteral::parse, |f| NodeOrText::Text(f.0)),
-            map(StringInline::parse, |f| NodeOrText::Text(f.0)),
+            map(StringLiteral::parse, NodeOrText::Text),
+            // map(StringInline::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attributes(pub Vec<Attribute>);
 impl Parser for Attributes {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -388,10 +489,16 @@ impl Parser for Attributes {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdOrClass {
     Id(Ident),
     Class(Ident),
+}
+
+impl Default for IdOrClass {
+    fn default() -> Self {
+        IdOrClass::Id(Ident::default())
+    }
 }
 
 impl Parser for IdOrClass {
@@ -403,7 +510,7 @@ impl Parser for IdOrClass {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
     pub key: Ident,
     pub value: Option<String>,
@@ -482,7 +589,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
     Ok((input, tagged))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct StringLiteral(pub String);
 impl Parser for StringLiteral {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -497,7 +604,7 @@ impl Parser for StringLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Ident(pub String);
 impl Parser for Ident {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -509,7 +616,7 @@ impl Parser for Ident {
     }
 }
 
-pub trait Parser
+trait Parser
 where
     Self: Sized,
 {
@@ -537,6 +644,10 @@ where
         }
 
         Self::parse(input)
+    }
+
+    fn from_s(s: &str) -> Self {
+        Self::parse_trim(s).unwrap().1
     }
 }
 
