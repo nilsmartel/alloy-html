@@ -155,7 +155,7 @@ mod tests {
         let Ok((rest, mut result)) = parse(input) else {
                 panic!("expected to parse input");
             };
-        let NodeOrText::Node(result) = result.0.0.remove(0) else {
+        let Element::Node(result) = result.0.0.remove(0) else {
             panic!("expected node");
         };
 
@@ -408,7 +408,7 @@ impl Parser for Node {
 // #[derive(Default, Debug, Clone, PartialEq, Eq)]
 // pub struct Body(NodeList);
 
-type Body = Vec<NodeOrText>;
+type Body = Vec<Element>;
 
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -418,7 +418,7 @@ impl Parser for Body {
             let (input, _) = KeywordCurlyOpen::parse(input)?;
 
             let (input, nodes) = many0(terminated(
-                NodeOrText::parse_trim,
+                Element::parse_trim,
                 opt(KeywordComma::parse_trim),
             ))(input)?;
 
@@ -441,33 +441,33 @@ impl Parser for Body {
             // "hello"
             // the same as { "hello" }
             map(StringLiteral::parse, |s| {
-                vec![NodeOrText::Text(s)]
+                vec![Element::Text(s)]
             }),
 
             // div
             // e.g. directly a node as first child.
-            map(Node::parse, |n| vec![NodeOrText::Node(n)]),
+            map(Node::parse, |n| vec![Element::Node(n)]),
         ))(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NodeOrText {
+pub enum Element {
     Node(Node),
     Text(StringLiteral),
 }
 
-impl Default for NodeOrText {
+impl Default for Element {
     fn default() -> Self {
-        NodeOrText::Node(Node::default())
+        Element::Node(Node::default())
     }
 }
 
-impl Parser for NodeOrText {
+impl Parser for Element {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
-            map(Node::parse, NodeOrText::Node),
-            map(StringLiteral::parse, NodeOrText::Text),
+            map(Node::parse, Element::Node),
+            map(StringLiteral::parse, Element::Text),
             // map(StringInline::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
