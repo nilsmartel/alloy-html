@@ -1,3 +1,4 @@
+use std::ops::Deref;
 
 use nom::bytes::complete::take_while1;
 
@@ -13,5 +14,12 @@ impl Parser for Ident {
         )(input)?;
 
         Ok((rest, Ident(ident.to_string())))
+    }
+}
+
+impl Deref for Ident {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
