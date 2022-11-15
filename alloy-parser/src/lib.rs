@@ -11,6 +11,9 @@ use nom::sequence::delimited;
 use nom::sequence::preceded;
 use nom::sequence::terminated;
 
+mod ident;
+pub use ident::Ident;
+
 #[cfg(test)]
 mod tests {
     use std::fs::read_dir;
@@ -602,18 +605,6 @@ impl Parser for StringLiteral {
         let s = s.to_string();
 
         Ok((input, StringLiteral(s)))
-    }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct Ident(pub String);
-impl Parser for Ident {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (rest, ident) = take_while1(
-            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '%' | '°'),
-        )(input)?;
-
-        Ok((rest, Ident(ident.to_string())))
     }
 }
 
