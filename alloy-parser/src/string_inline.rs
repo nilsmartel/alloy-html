@@ -8,6 +8,7 @@ use nom::sequence::delimited;
 
 /// Represents a special syntax by which we can recognize strings inside attributes.
 /// Designed to be most compatible with javascript and respects opening / closing brackets.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StringInline(pub String);
 impl Parser for StringInline {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
