@@ -408,10 +408,7 @@ impl Parser for Node {
     }
 }
 
-// #[derive(Default, Debug, Clone, PartialEq, Eq)]
-// pub struct Body(NodeList);
-
-type Body = Vec<Element>;
+pub type Body = Vec<Element>;
 
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
@@ -443,7 +440,7 @@ impl Parser for Body {
                  Body::new()),
             // "hello"
             // the same as { "hello" }
-            map(StringLiteral::parse, |s| {
+            map(String::parse, |s| {
                 vec![Element::Text(s)]
             }),
 
@@ -457,7 +454,7 @@ impl Parser for Body {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
     Node(Node),
-    Text(StringLiteral),
+    Text(String),
 }
 
 impl Default for Element {
@@ -470,7 +467,7 @@ impl Parser for Element {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(Node::parse, Element::Node),
-            map(StringLiteral::parse, Element::Text),
+            map(String::parse, Element::Text),
         ))(input)
     }
 }
@@ -546,7 +543,7 @@ impl Parser for StringInline {
         use nom::combinator::recognize;
 
         // parsing "" should ommit them
-        if let Ok((rest, StringLiteral(s))) = StringLiteral::parse(input) {
+        if let Ok((rest, s)) = String::parse(input) {
             return Ok((rest, StringInline(s)));
         }
 
@@ -582,7 +579,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
         take_while1(
             |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' |'%' |'°' | '/' | '\\'),
         ),
-        recognize(StringLiteral::parse),
+        recognize(String::parse),
         anyparen,
     ))(input)?;
 
@@ -593,9 +590,7 @@ fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
     Ok((input, tagged))
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct StringLiteral(pub String);
-impl Parser for StringLiteral {
+impl Parser for String {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         let (input, s) = alt((
             delimited(char('\''), take_while(|c| c != '\''), char('\'')),
@@ -604,7 +599,7 @@ impl Parser for StringLiteral {
 
         let s = s.to_string();
 
-        Ok((input, StringLiteral(s)))
+        Ok((input, s))
     }
 }
 
