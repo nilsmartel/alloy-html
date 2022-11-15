@@ -1,13 +1,16 @@
-use nom::{multi::many0, combinator::{map, opt}, branch::alt, sequence::terminated};
+use nom::{
+    branch::alt,
+    combinator::{map, opt},
+    multi::many0,
+    sequence::terminated,
+};
 
-use crate::{ Element, Parser, keywords::*, Node };
-
+use crate::{keywords::*, Element, Node, Parser};
 
 pub type Body = Vec<Element>;
 
 impl Parser for Body {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
-
         // { ... }
         fn parse_block(input: &str) -> nom::IResult<&str, Body> {
             let (input, _) = KeywordCurlyOpen::parse(input)?;
@@ -21,7 +24,7 @@ impl Parser for Body {
 
             Ok((input, nodes))
         }
-        
+
         // div
         // "abcdefg"
         // ;
@@ -30,15 +33,11 @@ impl Parser for Body {
             // { ... }
             parse_block,
             // ;
-            map(KeywordNone::parse, |_| 
-                 // create new empty vector
-                 Body::new()),
+            // create new empty vector
+            map(KeywordNone::parse, |_| Body::new()),
             // "hello"
             // the same as { "hello" }
-            map(String::parse, |s| {
-                vec![Element::Text(s)]
-            }),
-
+            map(String::parse, |s| vec![Element::Text(s)]),
             // div
             // e.g. directly a node as first child.
             map(Node::parse, |n| vec![Element::Node(n)]),

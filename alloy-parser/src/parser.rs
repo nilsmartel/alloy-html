@@ -1,8 +1,7 @@
-
-use nom::bytes::complete::take_while;
-use nom::sequence::delimited;
-use nom::character::complete::char;
 use nom::branch::alt;
+use nom::bytes::complete::take_while;
+use nom::character::complete::char;
+use nom::sequence::delimited;
 
 pub trait Parser
 where
@@ -38,7 +37,6 @@ where
         Self::parse_trim(s).unwrap().1
     }
 }
-
 
 /// "hello world"
 impl Parser for String {

@@ -1,6 +1,6 @@
 use crate::Parser;
-use nom::character::complete::char;
 use nom::bytes::complete::take;
+use nom::character::complete::char;
 
 macro_rules! keyword {
     ($name: ident, $ch: expr) => {
