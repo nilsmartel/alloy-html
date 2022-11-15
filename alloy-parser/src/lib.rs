@@ -155,7 +155,7 @@ mod tests {
         let Ok((rest, mut result)) = parse(input) else {
                 panic!("expected to parse input");
             };
-        let Element::Node(result) = result.0.0.remove(0) else {
+        let Element::Node(result) = result.remove(0) else {
             panic!("expected node");
         };
 
@@ -468,7 +468,6 @@ impl Parser for Element {
         alt((
             map(Node::parse, Element::Node),
             map(StringLiteral::parse, Element::Text),
-            // map(StringInline::parse, |f| NodeOrText::Text(f.0)),
         ))(input)
     }
 }
@@ -538,7 +537,7 @@ impl Parser for Attribute {
     }
 }
 
-pub struct StringInline(String);
+pub struct StringInline(pub String);
 impl Parser for StringInline {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         use nom::combinator::recognize;
