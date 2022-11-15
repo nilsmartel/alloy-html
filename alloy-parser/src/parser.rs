@@ -1,7 +1,11 @@
 use nom::branch::alt;
 use nom::bytes::complete::take_while;
 use nom::character::complete::char;
-use nom::sequence::delimited;
+use nom::combinator::map;
+use nom::sequence::{delimited, preceded};
+
+use crate::keywords::KeywordInline;
+use crate::StringInline;
 
 pub trait Parser
 where
@@ -39,15 +43,20 @@ where
 }
 
 /// "hello world"
+/// 'hello world'
+/// ${ ... }
 impl Parser for String {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, s) = alt((
-            delimited(char('\''), take_while(|c| c != '\''), char('\'')),
-            delimited(char('"'), take_while(|c| c != '"'), char('"')),
-        ))(input)?;
-
-        let s = s.to_string();
-
-        Ok((input, s))
+        alt((
+            map(
+                delimited(char('\''), take_while(|c| c != '\''), char('\'')),
+                String::from,
+            ),
+            map(
+                delimited(char('"'), take_while(|c| c != '"'), char('"')),
+                String::from,
+            ),
+            preceded(KeywordInline::parse, map(StringInline::parse, |s| s.0)),
+        ))(input)
     }
 }

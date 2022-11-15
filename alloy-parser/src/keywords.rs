@@ -23,6 +23,8 @@ keyword!(KeywordBracketClose, ']');
 keyword!(KeywordCurlyOpen, '{');
 keyword!(KeywordCurlyClose, '}');
 keyword!(KeywordNone, ';');
+// Special syntax to start inline strings
+keyword!(KeywordInline, '$');
 
 pub struct KeywordEof;
 impl Parser for KeywordEof {

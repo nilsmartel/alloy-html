@@ -185,7 +185,8 @@ mod tests {
         "head { link(rel: stylesheet, href: xyz); style \"\" }"
     );
 
-    bodytest!(stylesheet1, "style {{}}");
+    bodytest!(stylesheet1, "style {'{}'}");
+    bodytest!(stylesheet2, "style '{}'");
 
     bodytest!(textnode1, "h1 'hello world'");
     bodytest!(textnode2, "h1(bold: true) 'hello world'");
