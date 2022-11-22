@@ -7,10 +7,12 @@ Node :=
     body: <body>
 
 
-NodeOrText := Node | <string> | <inline-str-value>
+Element := Node | <string>
+
+string := ".." | '..' | $<inline-str>
 
 <body> :=
-    |   "{" NodeOrText* "}"
+    |   "{" Element* "}"
     |   <string>
     |   Node
     |   ";" -- nothing
