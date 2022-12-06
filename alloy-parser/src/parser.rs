@@ -1,8 +1,9 @@
 use nom::branch::alt;
-use nom::bytes::complete::{take_while, take_until, take};
+use nom::bytes::complete::{take, take_until};
 use nom::character::complete::char;
-use nom::combinator::{map, cut};
-use nom::sequence::{delimited, preceded};
+use nom::combinator::{cut, map};
+use nom::error::context;
+use nom::sequence::{delimited, preceded, terminated};
 
 use crate::keywords::KeywordInline;
 use crate::StringInline;
@@ -50,15 +51,29 @@ impl Parser for String {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(
-                delimited(char('\''), cut(take_until("'")), take(1usize)),
-                String::from,
-            ),
-            map(
-                delimited(char('\"'), cut(take_until("\"")), take(1usize)),
-                String::from,
-            ),
-            map(
-                delimited(char('`'), cut(take_until("`")), take(1usize)),
+                alt((
+                    preceded(
+                        context("expected '", char('\'')),
+                        context(
+                            "expected matching '",
+                            terminated(cut(take_until("'")), take(1usize)),
+                        ),
+                    ),
+                    preceded(
+                        context("expected \"", char('"')),
+                        context(
+                            "expected matching \"",
+                            terminated(cut(take_until("\"")), take(1usize)),
+                        ),
+                    ),
+                    preceded(
+                        context("expected `", char('`')),
+                        context(
+                            "expected matching `",
+                            terminated(cut(take_until("`")), take(1usize)),
+                        ),
+                    ),
+                )),
                 String::from,
             ),
             // TODO is this needed for css? try in production or remove
