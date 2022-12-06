@@ -1,7 +1,7 @@
 use nom::branch::alt;
-use nom::bytes::complete::take_while;
+use nom::bytes::complete::{take_while, take_until, take};
 use nom::character::complete::char;
-use nom::combinator::map;
+use nom::combinator::{map, cut};
 use nom::sequence::{delimited, preceded};
 
 use crate::keywords::KeywordInline;
@@ -44,18 +44,24 @@ where
 
 /// "hello world"
 /// 'hello world'
+/// `hello world`
 /// ${ ... }
 impl Parser for String {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
             map(
-                delimited(char('\''), take_while(|c| c != '\''), char('\'')),
+                delimited(char('\''), cut(take_until("'")), take(1usize)),
                 String::from,
             ),
             map(
-                delimited(char('"'), take_while(|c| c != '"'), char('"')),
+                delimited(char('\"'), cut(take_until("\"")), take(1usize)),
                 String::from,
             ),
+            map(
+                delimited(char('`'), cut(take_until("`")), take(1usize)),
+                String::from,
+            ),
+            // TODO is this needed for css? try in production or remove
             preceded(KeywordInline::parse, map(StringInline::parse, |s| s.0)),
         ))(input)
     }
