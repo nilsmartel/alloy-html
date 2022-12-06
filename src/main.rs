@@ -99,7 +99,7 @@ fn to_html_node(
 
     writeln!(w, ">")?;
 
-    to_html(w, &node.body, level, config)?;
+    to_html(w, &node.body, level + 1, config)?;
 
     indent(w, level * config.indent)?;
     writeln!(w, "</{}>", node.kind.0)?;
