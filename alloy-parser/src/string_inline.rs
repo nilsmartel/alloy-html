@@ -2,8 +2,9 @@ use std::ops::Deref;
 
 use crate::Parser;
 use nom::branch::alt;
-use nom::bytes::complete::{take, take_while1};
+use nom::bytes::complete::{take_while1, take_until, take};
 use nom::character::complete::char;
+use nom::combinator::cut;
 use nom::sequence::delimited;
 
 /// Represents a special syntax by which we can recognize strings inside attributes.
@@ -24,35 +25,62 @@ impl Parser for StringInline {
     }
 }
 
+#[cfg(test)]
+mod inline_str_tests {
+    use super::*;
+
+    #[test]
+    fn parens() {
+        let input = "(dhsjakdhsjkadhk   dsjakldjsla  )";
+        let (rest, got) = recognize_input_str(input).expect("parse str");
+
+        assert_eq!(rest, "", "nothing remains");
+        assert_eq!(got, "dhsjakdhsjkadhk   dsjakldjsla");
+    }
+
+    #[test]
+    fn anyparens() {
+        let input = "(dhsjakdhsjkadhk   dsjakldjsla  )";
+        let (rest, got) = anyparen(input).expect("parse str");
+
+        assert_eq!(rest, "", "nothing remains");
+        assert_eq!(got, "dhsjakdhsjkadhk   dsjakldjsla");
+    }
+}
+
+fn anyparen(input: &str) -> nom::IResult<&str, &str> {
+    let (rest, got) = alt((
+        delimited(
+            char('('),
+            cut(take_until(")")),
+            take(1usize),
+        ),
+        delimited(
+            char('{'),
+            cut(take_until("}")),
+            take(1usize),
+        ),
+        delimited(
+            char('['),
+            cut(take_until("]")),
+            take(1usize),
+        ),
+    ))(input)?;
+
+    let got = got.trim_end();
+    Ok((rest, got))
+}
+
+
 fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
     use nom::combinator::recognize;
 
-    fn anyparen(input: &str) -> nom::IResult<&str, &str> {
-        alt((
-            delimited(
-                char('('),
-                alt((recognize_input_str, take(0usize))),
-                char(')'),
-            ),
-            delimited(
-                char('{'),
-                alt((recognize_input_str, take(0usize))),
-                char('}'),
-            ),
-            delimited(
-                char('['),
-                alt((recognize_input_str, take(0usize))),
-                char(']'),
-            ),
-        ))(input)
-    }
-
     let (input, tagged) = alt((
+        anyparen,
         take_while1(
             |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' |'%' |'°' | '/' | '\\'),
         ),
         recognize(String::parse),
-        anyparen,
     ))(input)?;
 
     if let Ok((input, tagged)) = recognize_input_str(input) {

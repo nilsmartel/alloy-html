@@ -243,6 +243,81 @@ mod tests {
     }
     ");
 
+    bodytest!(body_filled1, "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
+            img(src: ../ressources/icon.png, onclick: goto('home'));
+
+            h2.color-green { Graphmasters }
+            input(type: 'text');
+        }
+    ");
+    bodytest!(
+        body_filled1a,
+        "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {}
+    "
+    );
+
+    #[test]
+    fn body_filled2_img() {
+        let input =  "
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
+            img(src: ../ressources/icon.png, onclick: goto('home'));";
+
+        let (rest, _node) = Node::parse_trim(input).unwrap();
+        assert_eq!(rest, "");
+
+    }
+
+    #[test]
+    fn unusal_attributes1() {
+        let input = "src: ../ressources/icon.png";
+        let a = Attribute::from_s(input);
+        assert_eq!(
+            a,
+            Attribute {
+                key: Ident::from_s("src"),
+                value: Some(String::from("../ressources/icon.png"))
+            }
+        );
+    }
+
+    #[test]
+    fn unusal_attributes2() {
+        let input = "onclick: goto('home')";
+        let a = Attribute::from_s(input);
+        assert_eq!(
+            a,
+            Attribute {
+                key: Ident::from_s("onclick"),
+                value: Some(String::from("goto('home')"))
+            }
+        );
+    }
+
+    #[test]
+    fn odd_idents1() {
+        let input = "../ressources/icon.png,";
+        let expected = "../ressources/icon.png";
+        let rest = ",";
+
+        let (r, got) = StringInline::parse(input).expect("parse inline str");
+        assert_eq!(got.0, expected);
+        assert_eq!(r, rest);
+    }
+
+    #[test]
+    fn odd_idents2() {
+        let input = "goto('home', x))";
+        let expected = "goto('home', x)";
+        let rest = ")";
+
+        let (r, got) = StringInline::parse(input).expect("parse inline str");
+        assert_eq!(got.0, expected);
+        assert_eq!(r, rest);
+    }
+
     #[test]
     fn attributes_and_ids() {
         let input = "div#header.w-100(style: 'height: 48px; margin-top: 8px') {
