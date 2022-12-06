@@ -3,7 +3,7 @@ use nom::bytes::complete::{take, take_until};
 use nom::character::complete::char;
 use nom::combinator::{cut, map};
 use nom::error::context;
-use nom::sequence::{delimited, preceded, terminated};
+use nom::sequence::{preceded, terminated};
 
 use crate::keywords::KeywordInline;
 use crate::StringInline;

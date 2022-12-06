@@ -2,6 +2,7 @@ use nom::{
     branch::alt,
     character::complete::char,
     combinator::{cut, map, opt},
+    error::context,
     multi::many0,
     sequence::{delimited, preceded, terminated},
 };
@@ -75,8 +76,20 @@ impl Default for IdOrClass {
 impl Parser for IdOrClass {
     fn parse(input: &str) -> nom::IResult<&str, Self> {
         alt((
-            map(preceded(char('#'), Ident::parse), IdOrClass::Id),
-            map(preceded(char('.'), Ident::parse), IdOrClass::Class),
+            map(
+                preceded(
+                    char('#'),
+                    context("expect identifier after #", cut(Ident::parse)),
+                ),
+                IdOrClass::Id,
+            ),
+            map(
+                preceded(
+                    char('.'),
+                    context("expect identifier after .", cut(Ident::parse)),
+                ),
+                IdOrClass::Class,
+            ),
         ))(input)
     }
 }
@@ -95,7 +108,8 @@ impl Parser for Attribute {
             return Ok((input, Attribute { key, value: None }))
         };
 
-        let (input, StringInline(value)) = StringInline::parse_trim(input)?;
+        let (input, StringInline(value)) =
+            context("expected attribute after :", cut(StringInline::parse_trim))(input)?;
 
         Ok((
             input,

@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::Parser;
 use nom::branch::alt;
-use nom::bytes::complete::{take_while1, take_until, take};
+use nom::bytes::complete::{take, take_until, take_while1};
 use nom::character::complete::char;
 use nom::combinator::cut;
 use nom::sequence::delimited;
@@ -50,27 +50,14 @@ mod inline_str_tests {
 
 fn anyparen(input: &str) -> nom::IResult<&str, &str> {
     let (rest, got) = alt((
-        delimited(
-            char('('),
-            cut(take_until(")")),
-            take(1usize),
-        ),
-        delimited(
-            char('{'),
-            cut(take_until("}")),
-            take(1usize),
-        ),
-        delimited(
-            char('['),
-            cut(take_until("]")),
-            take(1usize),
-        ),
+        delimited(char('('), cut(take_until(")")), take(1usize)),
+        delimited(char('{'), cut(take_until("}")), take(1usize)),
+        delimited(char('['), cut(take_until("]")), take(1usize)),
     ))(input)?;
 
     let got = got.trim_end();
     Ok((rest, got))
 }
-
 
 fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
     use nom::combinator::recognize;

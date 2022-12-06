@@ -231,27 +231,33 @@ mod tests {
     }"
     );
 
-    bodytest!(body_filled, "
+    bodytest!(
+        body_filled,
+        "
     body {
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
-                                                    //   ________ <- Note how the opening and closing parens are still getting counted
-            img(src: ../ressources/icon.png, onclick: goto('home'));
-
-            h2.color-green { Graphmasters }
+            h2.color-green 'Graphmasters'
             input(type: 'text');
         }
     }
-    ");
+    "
+    );
 
-    bodytest!(body_filled1, "
-        div#header.w-100(style: 'height: 48px; margin-top: 8px') {
-                                                    //   ________ <- Note how the opening and closing parens are still getting counted
-            img(src: ../ressources/icon.png, onclick: goto('home'));
+    #[test]
+    fn body_filled0() {
+        let input = "
+                div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+                                                            //   ________ <- Note how the opening and closing parens are still getting counted
+                    img(src: ../ressources/icon.png, onclick: goto('home'));
 
-            h2.color-green { Graphmasters }
-            input(type: 'text');
-        }
-    ");
+                    h2.color-green { `Graphmasters` }
+                    input(type: 'text');
+                }";
+
+        let (rest, body) = Body::parse_trim(input).expect("parse body");
+        assert_eq!(rest, "", "nothing remains of the input")
+    }
+
     bodytest!(
         body_filled1a,
         "
@@ -267,7 +273,6 @@ mod tests {
 
         let (rest, _node) = Node::parse_trim(input).unwrap();
         assert_eq!(rest, "");
-
     }
 
     #[test]
