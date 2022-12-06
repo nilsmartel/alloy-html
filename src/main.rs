@@ -60,7 +60,7 @@ fn to_html_node(
     let node = match node {
         ast::Element::Text(t) => {
             let t = escape(&t);
-            writeln!(w, "'{t}'")?;
+            writeln!(w, "{t}")?;
             return Ok(());
         }
         ast::Element::Node(node) => node,
