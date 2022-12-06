@@ -1,14 +1,21 @@
-use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::bytes::complete::take_while;
-use nom::bytes::complete::take_while1;
-use nom::character::complete::char;
-use nom::combinator::map;
-use nom::combinator::opt;
-use nom::multi::many0;
-use nom::sequence::delimited;
-use nom::sequence::preceded;
-use nom::sequence::terminated;
+
+mod string_inline;
+pub use string_inline::*;
+mod ident;
+pub use ident::Ident;
+mod parser;
+pub use parser::*;
+mod body;
+pub use body::*;
+mod keywords;
+use keywords::*;
+
+mod node;
+pub use node::*;
+
+mod element;
+pub use element::Element;
 
 #[cfg(test)]
 mod tests {
@@ -38,6 +45,20 @@ mod tests {
                 "nothing remains on file {name}. Remaining: {rest}"
             );
         }
+    }
+
+    #[test]
+    fn quick_syntax() {
+        let input = "div p 'hello'";
+        let expected = Node {
+            kind: Ident(String::from("div")),
+            body: Body::from_s("p {'hello'}"),
+            ..Default::default()
+        };
+
+        let result = Node::from_s(input);
+
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -118,6 +139,42 @@ mod tests {
         };
     }
 
+    #[test]
+    fn fullelement() {
+        let input = "img(src: ../resources/icon.png, onclick: goto('home'));";
+        let expected = Node {
+            kind: Ident("img".to_string()),
+            ids_and_classes: Vec::new(),
+            attributes: Some(Attributes(vec![
+                Attribute {
+                    key: Ident("src".to_string()),
+                    value: Some("../resources/icon.png".to_string()),
+                },
+                Attribute {
+                    key: Ident("onclick".to_string()),
+                    value: Some("goto('home')".to_string()),
+                },
+            ])),
+            body: Body::default(),
+        };
+
+        let Ok((rest, mut result)) = parse(input) else {
+                panic!("expected to parse input");
+            };
+        let Element::Node(result) = result.remove(0) else {
+            panic!("expected node");
+        };
+
+        assert_eq!(rest, "");
+        assert_eq!(expected.kind, result.kind, "same kind");
+        assert_eq!(
+            expected.ids_and_classes, result.ids_and_classes,
+            "same ids and classes"
+        );
+        assert_eq!(expected.attributes, result.attributes, "same attributes");
+        assert_eq!(expected.body, result.body, "same body");
+    }
+
     bodytest!(nochildren, "head {}");
     bodytest!(attributes_on_node, "meta(charset: UTF-8);");
     bodytest!(attributes_on_node_str, "meta(charset: 'UTF-8');");
@@ -128,7 +185,8 @@ mod tests {
         "head { link(rel: stylesheet, href: xyz); style \"\" }"
     );
 
-    bodytest!(stylesheet1, "style {{}}");
+    bodytest!(stylesheet1, "style {'{}'}");
+    bodytest!(stylesheet2, "style '{}'");
 
     bodytest!(textnode1, "h1 'hello world'");
     bodytest!(textnode2, "h1(bold: true) 'hello world'");
@@ -173,17 +231,116 @@ mod tests {
     }"
     );
 
-    bodytest!(body_filled, "
+    bodytest!(
+        body_filled,
+        "
     body {
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
-                                                    //   ________ <- Note how the opening and closing parens are still getting counted
-            img(src: ../ressources/icon.png, onclick: goto('home'));
-
-            h2.color-green { Graphmasters }
+            h2.color-green 'Graphmasters'
             input(type: 'text');
         }
     }
-    ");
+    "
+    );
+
+    #[test]
+    fn body_filled0() {
+        let input = "
+                div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+                                                            //   ________ <- Note how the opening and closing parens are still getting counted
+                    img(src: ../ressources/icon.png, onclick: goto('home'));
+
+                    h2.color-green { `Graphmasters` }
+                    input(type: 'text');
+                }";
+
+        let (rest, _body) = Body::parse_trim(input).expect("parse body");
+        assert_eq!(rest, "", "nothing remains of the input")
+    }
+
+    bodytest!(
+        body_filled1a,
+        "
+        div#header.w-100(style: 'height: 48px; margin-top: 8px') {}
+    "
+    );
+
+    #[test]
+    fn body_filled2_img() {
+        let input =  "
+                                                    //   ________ <- Note how the opening and closing parens are still getting counted
+            img(src: ../ressources/icon.png, onclick: goto('home'));";
+
+        let (rest, _node) = Node::parse_trim(input).unwrap();
+        assert_eq!(rest, "");
+    }
+
+    #[test]
+    fn unusal_attributes1() {
+        let input = "src: ../ressources/icon.png";
+        let a = Attribute::from_s(input);
+        assert_eq!(
+            a,
+            Attribute {
+                key: Ident::from_s("src"),
+                value: Some(String::from("../ressources/icon.png"))
+            }
+        );
+    }
+
+    #[test]
+    fn unusal_attributes2() {
+        let input = "onclick: goto('home')";
+        let a = Attribute::from_s(input);
+        assert_eq!(
+            a,
+            Attribute {
+                key: Ident::from_s("onclick"),
+                value: Some(String::from("goto('home')"))
+            }
+        );
+    }
+
+    #[test]
+    fn odd_idents1() {
+        let input = "../ressources/icon.png,";
+        let expected = "../ressources/icon.png";
+        let rest = ",";
+
+        let (r, got) = StringInline::parse(input).expect("parse inline str");
+        assert_eq!(got.0, expected);
+        assert_eq!(r, rest);
+    }
+
+    #[test]
+    fn odd_idents2() {
+        let input = "goto('home', x))";
+        let expected = "goto('home', x)";
+        let rest = ")";
+
+        let (r, got) = StringInline::parse(input).expect("parse inline str");
+        assert_eq!(got.0, expected);
+        assert_eq!(r, rest);
+    }
+
+    #[test]
+    fn attributes_and_ids() {
+        let input = "div#header.w-100(style: 'height: 48px; margin-top: 8px') {
+        }";
+        let expected = Node {
+            kind: Ident::from_s("div"),
+            ids_and_classes: vec![IdOrClass::from_s("#header"), IdOrClass::from_s(".w-100")],
+            attributes: Some(Attributes(vec![Attribute {
+                key: Ident::from_s("style"),
+                value: Some(String::from("height: 48px; margin-top: 8px")),
+            }])),
+            body: Body::default(),
+        };
+
+        let result = Node::from_s(input);
+
+        assert_eq!(result, expected);
+    }
 
     bodytest!(div_filled, "
         div#header.w-100(style: 'height: 48px; margin-top: 8px') {
@@ -265,6 +422,17 @@ mod tests {
     }
 
     #[test]
+    fn inline_str2() {
+        let i = "../../src/main.rs";
+
+        let result = StringInline::parse(i);
+        assert!(result.is_ok(), "expected to parse {i}");
+        let (rest, r) = result.unwrap();
+        assert_eq!(rest, "", "not rest on {i}");
+        assert_eq!(r.0, i);
+    }
+
+    #[test]
     fn comments2() {
         let i = "/* hello */ input(type: text); /* yeah */";
 
@@ -280,292 +448,12 @@ mod tests {
     }
 }
 
-pub fn parse(input: &str) -> nom::IResult<&str, Node> {
-    let (input, node) = Node::parse_trim(input)?;
+pub fn parse(input: &str) -> nom::IResult<&str, Body> {
+    let (input, body) = Body::parse_trim(input)?;
 
     let (input, _eolmarker) = KeywordEof::parse_trim(input)?;
 
     nom::combinator::not(take(1usize))(input)?;
 
-    Ok((input, node))
-}
-
-#[derive(Debug, Clone)]
-pub struct Node {
-    pub kind: Ident,
-    pub ids_and_classes: Vec<IdOrClass>,
-    pub attributes: Option<Attributes>,
-    pub body: Body,
-}
-impl Parser for Node {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, kind) = Ident::parse(input)?;
-        let (input, ids_and_classes) = many0(IdOrClass::parse_trim)(input)?;
-
-        let (input, attributes) = opt(Attributes::parse_trim)(input)?;
-
-        let (input, body) = Body::parse_trim(input)?;
-
-        Ok((
-            input,
-            Node {
-                kind,
-                ids_and_classes,
-                attributes,
-                body,
-            },
-        ))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Body {
-    Nodes(NodeList),
-    Node(Box<Node>),
-    String(StringLiteral),
-    None,
-}
-
-impl Parser for Body {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        alt((
-            map(NodeList::parse, Body::Nodes),
-            map(StringLiteral::parse, Body::String),
-            // map(Node::parse, |n| Body::Node(Box::new(n)),
-            map(KeywordNone::parse, |_| Body::None),
-        ))(input)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NodeList(pub Vec<NodeOrText>);
-impl Parser for NodeList {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, _) = KeywordCurlyOpen::parse(input)?;
-
-        let (input, nodes) = many0(terminated(
-            NodeOrText::parse_trim,
-            opt(KeywordComma::parse_trim),
-        ))(input)?;
-
-        let (input, _) = KeywordCurlyClose::parse_trim(input)?;
-
-        Ok((input, NodeList(nodes)))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum NodeOrText {
-    Node(Node),
-    Text(String),
-}
-
-impl Parser for NodeOrText {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        alt((
-            map(Node::parse, NodeOrText::Node),
-            map(StringLiteral::parse, |f| NodeOrText::Text(f.0)),
-            map(StringInline::parse, |f| NodeOrText::Text(f.0)),
-        ))(input)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Attributes(pub Vec<Attribute>);
-impl Parser for Attributes {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        map(
-            delimited(
-                KeywordParenOpen::parse,
-                many0(terminated(
-                    Attribute::parse_trim,
-                    opt(KeywordComma::parse_trim),
-                )),
-                KeywordParenClose::parse_trim,
-            ),
-            Attributes,
-        )(input)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum IdOrClass {
-    Id(Ident),
-    Class(Ident),
-}
-
-impl Parser for IdOrClass {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        alt((
-            map(preceded(char('#'), Ident::parse), IdOrClass::Id),
-            map(preceded(char('.'), Ident::parse), IdOrClass::Class),
-        ))(input)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Attribute {
-    pub key: Ident,
-    pub value: Option<String>,
-}
-
-impl Parser for Attribute {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, key) = Ident::parse(input)?;
-
-        let Ok((input, _)) = KeywordColon::parse_trim(input) else {
-            return Ok((input, Attribute { key, value: None }))
-        };
-
-        let (input, StringInline(value)) = StringInline::parse_trim(input)?;
-
-        Ok((
-            input,
-            Attribute {
-                key,
-                value: Some(value),
-            },
-        ))
-    }
-}
-
-pub struct StringInline(String);
-impl Parser for StringInline {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        use nom::combinator::recognize;
-
-        // parsing "" should ommit them
-        if let Ok((rest, StringLiteral(s))) = StringLiteral::parse(input) {
-            return Ok((rest, StringInline(s)));
-        }
-
-        let (rest, s) = recognize(recognize_input_str)(input)?;
-        Ok((rest, StringInline(s.to_string())))
-    }
-}
-
-fn recognize_input_str(input: &str) -> nom::IResult<&str, &str> {
-    use nom::combinator::recognize;
-
-    fn anyparen(input: &str) -> nom::IResult<&str, &str> {
-        alt((
-            delimited(
-                char('('),
-                alt((recognize_input_str, take(0usize))),
-                char(')'),
-            ),
-            delimited(
-                char('{'),
-                alt((recognize_input_str, take(0usize))),
-                char('}'),
-            ),
-            delimited(
-                char('['),
-                alt((recognize_input_str, take(0usize))),
-                char(']'),
-            ),
-        ))(input)
-    }
-
-    let (input, tagged) = alt((
-        take_while1(
-            |c| matches!(c, ' '| '\n' | ':' | ';' | 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '.' |'%' |'°' | '/' | '\\'),
-        ),
-        recognize(StringLiteral::parse),
-        anyparen,
-    ))(input)?;
-
-    if let Ok((input, tagged)) = recognize_input_str(input) {
-        return Ok((input, tagged));
-    }
-
-    Ok((input, tagged))
-}
-
-#[derive(Debug, Clone)]
-pub struct StringLiteral(pub String);
-impl Parser for StringLiteral {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (input, s) = alt((
-            delimited(char('\''), take_while(|c| c != '\''), char('\'')),
-            delimited(char('"'), take_while(|c| c != '"'), char('"')),
-        ))(input)?;
-
-        let s = s.to_string();
-
-        Ok((input, StringLiteral(s)))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Ident(pub String);
-impl Parser for Ident {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (rest, ident) = take_while1(
-            |c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '$' | '%' | '°'),
-        )(input)?;
-
-        Ok((rest, Ident(ident.to_string())))
-    }
-}
-
-pub trait Parser
-where
-    Self: Sized,
-{
-    fn parse(input: &str) -> nom::IResult<&str, Self>;
-
-    fn parse_trim(input: &str) -> nom::IResult<&str, Self> {
-        let input = input.trim_start();
-
-        // cut out commments
-        if input.starts_with("//") {
-            if let Some(index) = input.find('\n') {
-                let index = index + 1;
-                return Self::parse_trim(&input[index..]);
-            }
-            return Self::parse_trim("");
-        }
-        /* cut out comments */
-        if input.starts_with("/*") {
-            if let Some(index) = input.find("*/") {
-                let index = index + 2;
-                return Self::parse_trim(&input[index..]);
-            }
-            // It's allowed to simply cut off all remaining content without closing */
-            return Self::parse_trim("");
-        }
-
-        Self::parse(input)
-    }
-}
-
-macro_rules! keyword {
-    ($name: ident, $ch: expr) => {
-        struct $name;
-        impl Parser for $name {
-            fn parse(input: &str) -> nom::IResult<&str, Self> {
-                let (rest, _) = char($ch)(input)?;
-                Ok((rest, $name))
-            }
-        }
-    };
-}
-
-keyword!(KeywordColon, ':');
-keyword!(KeywordComma, ',');
-keyword!(KeywordParenOpen, '(');
-keyword!(KeywordParenClose, ')');
-keyword!(KeywordBracketOpen, '[');
-keyword!(KeywordBracketClose, ']');
-keyword!(KeywordCurlyOpen, '{');
-keyword!(KeywordCurlyClose, '}');
-keyword!(KeywordNone, ';');
-
-struct KeywordEof;
-impl Parser for KeywordEof {
-    fn parse(input: &str) -> nom::IResult<&str, Self> {
-        let (rest, _) = take(0usize)(input)?;
-        Ok((rest, KeywordEof))
-    }
+    Ok((input, body))
 }

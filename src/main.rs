@@ -1,10 +1,7 @@
 use alloy_parser as ast;
-use ast::NodeOrText;
 use std::{
     ffi::OsString,
-    fs::write,
     io::{self, stdout, BufWriter, Write},
-    ops::Add,
 };
 
 use structopt::StructOpt;
@@ -41,12 +38,33 @@ struct OutputConfig {
 
 fn to_html(
     w: &mut impl Write,
-    node: &ast::Node,
+    nodes: &[ast::Element],
+    level: usize,
+    config: &OutputConfig,
+) -> io::Result<()> {
+    for node in nodes {
+        to_html_node(w, node, level, config)?;
+    }
+    Ok(())
+}
+
+fn to_html_node(
+    w: &mut impl Write,
+    node: &ast::Element,
     level: usize,
     config: &OutputConfig,
 ) -> io::Result<()> {
     // proper indentation
     indent(w, level * config.indent)?;
+
+    let node = match node {
+        ast::Element::Text(t) => {
+            let t = escape(&t);
+            writeln!(w, "{t}")?;
+            return Ok(());
+        }
+        ast::Element::Node(node) => node,
+    };
 
     // write start of html tag.
     write!(w, "<{}", node.kind.0)?;
@@ -67,44 +85,21 @@ fn to_html(
         let classes = classes.join(" ");
 
         write!(w, " class='{classes}'")?;
+    }
 
-        if let Some(a) = &node.attributes {
-            for att in &a.0 {
-                write!(w, " {}", att.key.0)?;
-                let Some(value) = &att.value else {
+    if let Some(ref attrs) = node.attributes {
+        for attr in attrs.0.iter() {
+            write!(w, " {}", attr.key.0)?;
+            let Some(ref value) = attr.value else {
                 continue;
             };
-
-                write!(w, "='{}'", escape(&value))?;
-            }
+            write!(w, "='{}'", escape(value))?;
         }
     }
 
     writeln!(w, ">")?;
 
-    match &node.body {
-        ast::Body::None => {}
-        ast::Body::String(s) => {
-            indent(w, level.add(1) * config.indent)?;
-            write!(w, "{}", escape(&s.0))?;
-        }
-        ast::Body::Node(node) => {
-            to_html(w, node, level + 1, config)?;
-        }
-        ast::Body::Nodes(nodes) => {
-            for node in &nodes.0 {
-                match node {
-                    NodeOrText::Node(ref node) => {
-                        to_html(w, node, level + 1, config)?;
-                    }
-                    NodeOrText::Text(text) => {
-                        indent(w, (level + 1) * config.indent)?;
-                        write!(w, "{}", escape(&text))?;
-                    }
-                }
-            }
-        }
-    }
+    to_html(w, &node.body, level + 1, config)?;
 
     indent(w, level * config.indent)?;
     writeln!(w, "</{}>", node.kind.0)?;

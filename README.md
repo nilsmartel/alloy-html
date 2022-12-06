@@ -7,6 +7,8 @@ Programmer friendly syntax for html files.
 ## Example
 
 ```c
+// vim: set syntax=c :
+// DOCTYPE html
 html.h-100 {
     head {
         meta(charset: UTF-8);
@@ -15,7 +17,6 @@ html.h-100 {
             href: "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         );
 
-        // we donÄt need a lot of style here
         style "
             .h-100 {
                 height: 100%
@@ -24,27 +25,16 @@ html.h-100 {
     }
 
     body {
-        // every node expects at least one argument as body.
-        // be it another node, a { block } of nodes or a string literal
-        // String literals may be written directly as argument to elements
-        h1 "Welcome to my webpage!"
-
-        //         No ones stopping you from writing it out.
-        //         v-- the attribute list may be omitted, if desired.
-        p.footnote() "build from main on 13.11.2022"
-
-        // if a node has not content, one can indicate that simply by writing ; instead of {}
-        br;
-
-        // often nodes only have a single child. You can then write it directly as argument to the node
-        div.center div.fill p "alloy is super nice to write"
+        p(x:'noob') 'hello world'
+        p(a: true, b: false);
+        p.pretty(a: true, b: false) "everything is nice"
 
         div#header.w-100(style: "height: 48px; margin-top: 8px") {
                                                     //   ________ <- Note how the opening and closing parens are still getting counted
             img(src: ../ressources/icon.png, onclick: goto('home'));
 
-            // The grammar is trying to be smart. Here we know that text is supposed to be a string, just like with goto('home')
-            input(type: text);
+            h2.color-green { "Graphmasters" }
+            input(type: "text");
         }
     }
 }

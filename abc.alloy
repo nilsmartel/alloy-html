@@ -1,0 +1,13 @@
+html {
+    head {}
+
+    body {
+        div#header.w-100(onclick: openpage('main')) {
+            input(ahjkfd: "text") {
+                div;
+                div {p;}
+                div p;
+            }
+        }
+    }
+}

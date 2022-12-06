@@ -16,11 +16,15 @@ html.h-100 {
     }
 
     body {
+        p(x:'noob') 'hello world'
+        p(a: true, b: false);
+        p.pretty(a: true, b: false) "everything is nice"
+
         div#header.w-100(style: "height: 48px; margin-top: 8px") {
                                                     //   ________ <- Note how the opening and closing parens are still getting counted
             img(src: ../ressources/icon.png, onclick: goto('home'));
 
-            h2.color-green { Graphmasters }
+            h2.color-green { "Graphmasters" }
             input(type: "text");
         }
     }
