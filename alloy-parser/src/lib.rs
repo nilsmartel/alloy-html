@@ -254,7 +254,7 @@ mod tests {
                     input(type: 'text');
                 }";
 
-        let (rest, body) = Body::parse_trim(input).expect("parse body");
+        let (rest, _body) = Body::parse_trim(input).expect("parse body");
         assert_eq!(rest, "", "nothing remains of the input")
     }
 
