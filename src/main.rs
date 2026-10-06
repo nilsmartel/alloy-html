@@ -1,7 +1,7 @@
 use alloy_parser as ast;
 use std::{
     ffi::OsString,
-    io::{self, stdout, BufWriter, Write},
+    io::{self, stdout, BufWriter, Read, Write},
 };
 
 use structopt::StructOpt;
@@ -10,13 +10,21 @@ use structopt::StructOpt;
 /// CLI to transform Alloy files into html
 struct Config {
     #[structopt()]
-    infile: OsString,
+    infile: Option<OsString>,
 }
 
 fn main() {
     let Config { infile } = Config::from_args();
 
-    let content = std::fs::read_to_string(infile).expect("read input file");
+    let content = if let Some(infile) = infile {
+        std::fs::read_to_string(infile).expect("read file")
+    } else {
+        let mut buf = String::with_capacity(256);
+        std::io::stdin()
+            .read_to_string(&mut buf)
+            .expect("read stdin");
+        buf
+    };
 
     let node = ast::parse(&content).expect("parse valid input").1;
 
