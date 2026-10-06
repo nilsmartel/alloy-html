@@ -4,6 +4,13 @@ Programmer friendly syntax for html files.
 
 ---
 
+## Usage
+you can pass alloy files as argument or pipe them into the cli
+```bash
+cat index.alloy | alloy > index.html
+alloy index.alloy > index.html
+```
+
 ## Example
 
 ```c

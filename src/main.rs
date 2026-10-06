@@ -16,8 +16,8 @@ struct Config {
 fn main() {
     let Config { infile } = Config::from_args();
 
-    let content = if let Some(infile) = infile {
-        std::fs::read_to_string(infile).expect("read file")
+    let content = if let Some(ref infile) = infile {
+        std::fs::read_to_string(&infile).expect("read file")
     } else {
         let mut buf = String::with_capacity(256);
         std::io::stdin()
